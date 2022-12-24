@@ -1,0 +1,126 @@
+from flask import Flask, Response, request
+from flask_sqlalchemy import SQLAlchemy
+import mysql.connector
+import json
+
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:@localhost/dados'
+app.app_context().push()
+db = SQLAlchemy(app)
+
+class Usuario(db.Model):
+    id = db.Column(db.Integer, primary_key= True)
+    nome = db.Column(db.String(50))
+    email = db.Column(db.String(100))
+    curso = db.Column(db.String(100))
+
+    def to_json(self):
+        return {"id": self.id, "nome": self.nome, "email": self.email, "curso": self.curso}
+
+class Aulas(db.Model):
+    id = db.Column(db.Integer, primary_key= True)
+    Professores = db.Column(db.String(50))
+    Polos = db.Column(db.String(100))
+    Horários = db.Column(db.String(100))
+    Dias = db.Column(db.String(100))
+    Alongamento = db.Column(db.String(100))
+    Alunos = db.Column(db.String(100))
+
+
+
+    
+    def to_json(self):
+        return {"id": self.id, "Professores": self.Professores, "Polos": self.Polos, "Horarios": self.Horários, "Dias": self.Dias, "Alongamento": self.Alongamento, "Alunos": self.Alunos }
+    
+#mostrar aulas#
+
+@app.route("/Aula", methods=["GET"])
+def seleciona_aulas():
+    aulas_objetos = Aulas.query.all()
+    aulas_json = [aula.to_json() for aula in aulas_objetos]
+
+    return gera_response(200, "Aula", aulas_json)
+
+
+
+
+@app.route("/usuario/<id>", methods=["GET"])
+def seleciona_usuario(id):
+    usuario_objeto = Usuario.query.filter_by(id=id).first()
+    usuario_json = usuario_objeto.to_json()
+
+    return gera_response(200, "usuario", usuario_json)
+
+
+#Adiona Aulas#
+@app.route("/usuario/<id>", methods=["PUT"])
+def atualiza_usuario(id):
+    usuario_objeto = Usuario.query.filter_by(id=id).first()
+    body = request.get_json()
+    aulas_obejetos2 = Aulas.query.filter_by(Alongamento=body['curso']).first()
+    aulas_objetos = Aulas.query.all()
+    aulas_json = [aula.to_json() for aula in aulas_objetos]
+    
+    
+    print(aulas_json)
+    
+
+    courses = []
+    for r in aulas_json:
+        courses.append(r.get('Alongamento'))
+
+
+
+
+
+
+    
+    try:
+        if body['curso'] in courses:
+            usuario_objeto.curso = body['curso']
+            print(aulas_obejetos2)
+            aulas_obejetos2.alunos = usuario_objeto.id
+            #db.session.add(usuario_objeto)#
+            db.session.add_all([usuario_objeto,aulas_obejetos2])
+            db.session.commit()
+            return gera_response(200, "usuario", usuario_objeto.to_json(), "Aula adcionada como sucesso")
+        else:
+            print('Erro', e)
+        return gera_response(400, "usuario", {}, "Erro ao Adcionar")
+        
+    except Exception as e:
+        print('Erro', e)
+        return gera_response(400, "usuario", {}, "Erro ao Adcionar")
+        
+
+
+
+
+
+
+
+
+
+
+
+
+def gera_response(status, nome_do_conteudo, conteudo, mensagem=False):
+    body = {}
+    body[nome_do_conteudo] = conteudo
+
+    if(mensagem):
+        body["mensagem"] = mensagem
+
+    return Response(json.dumps(body), status=status, mimetype="application/json")
+
+
+app.run()
+
+
+
+
+
+
+
